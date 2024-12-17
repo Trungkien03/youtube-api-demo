@@ -3,9 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import App from './App.tsx'
 import DialogManager from './common/components/DialogManager.tsx'
-
-import store from './stores/index.ts'
 import './index.css'
+import store from './stores/index.ts'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

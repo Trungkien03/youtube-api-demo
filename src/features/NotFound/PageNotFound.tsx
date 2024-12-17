@@ -7,9 +7,9 @@ import { CONFIG } from '../../utils/config-global'
 
 const PageNotFound = () => (
   <>
-    <Helmet>
+    {/* <Helmet>
       <title> {`404 page not found! | Error - ${CONFIG.appName}`}</title>
-    </Helmet>
+    </Helmet> */}
     <div className='flex items-center justify-center min-h-screen bg-gray-100'>
       <div className='max-w-md w-full text-center p-6 bg-white rounded-lg shadow-lg'>
         {/* Header */}

@@ -26,6 +26,7 @@
     "@eslint/js": "^9.15.0",
     "@types/gapi": "^0.0.47",
     "@types/gapi.auth2": "^0.0.61",
+    "@types/gapi.client.youtube": "^3.0.4",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

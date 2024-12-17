@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAppDispatch, useAppSelector } from '../../stores'
-import { hideDialog } from '../../stores/slices/dialogSlice'
+import { hideDialog } from '../../stores/slices/dialog.slice'
 import { DialogType } from '../types/dialogSlice.type'
 
 const images = {
