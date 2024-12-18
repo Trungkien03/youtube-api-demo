@@ -3,22 +3,18 @@ import { useAppDispatch } from '@app/stores'
 import { hideDialog, showDialog } from '@app/stores/slices/dialog.slice'
 import { fDate } from '@app/utils/format-time'
 import { useEffect, useRef, useState } from 'react'
-import SubCommentItem from './SubCommentItem'
 
-type CommentItemProps = {
+type SubCommentItemProps = {
   commentSnippet: gapi.client.youtube.CommentSnippet | undefined
   commentId: string
-  replies?: gapi.client.youtube.Comment[]
-  onDelete?: () => void
   onReply?: (replyText: string, parentId: string) => void
   onDeleteReply?: (replyId: string) => void
 }
 
-const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply, commentId }: CommentItemProps) => {
+const SubCommentItem = ({ commentSnippet, onReply, onDeleteReply, commentId }: SubCommentItemProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
-  const [showReplies, setShowReplies] = useState(false)
   const [commentText, setCommentText] = useState(commentSnippet?.textOriginal || '')
   const [replyText, setReplyText] = useState('')
   const [originalComment, setOriginalComment] = useState(commentSnippet?.textOriginal || '')
@@ -60,20 +56,18 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
     }
   }
 
-  const toggleReplies = () => setShowReplies((prev) => !prev)
-
-  const handleRemove = () => {
-    setIsDropdownOpen(false)
-
+  const handleRemoveReply = (replyId: string) => {
     dispatch(
       showDialog({
-        title: 'Delete Comment',
-        content: 'Are you sure you want to delete this comment?',
+        title: 'Delete Reply',
+        content: 'Are you sure you want to delete this reply?',
         cancelButtonText: 'Cancel',
         confirmButtonText: 'Delete',
         type: DialogType.ALERT,
         onConfirm() {
-          if (onDelete) onDelete()
+          if (onDeleteReply) {
+            onDeleteReply(replyId)
+          }
           dispatch(hideDialog())
         }
       })
@@ -127,7 +121,10 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
               <button onClick={handleEdit} className='block w-full px-4 py-2 text-sm hover:bg-gray-500'>
                 Edit
               </button>
-              <button onClick={handleRemove} className='block w-full px-4 py-2 text-sm hover:bg-gray-500'>
+              <button
+                onClick={() => handleRemoveReply(commentId)}
+                className='block w-full px-4 py-2 text-sm hover:bg-gray-500'
+              >
                 Remove
               </button>
             </div>
@@ -161,11 +158,6 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
         <button onClick={handleReply} className='text-sm text-gray-500 hover:underline'>
           Reply
         </button>
-        {replies && replies.length > 0 && (
-          <button onClick={toggleReplies} className='text-sm text-gray-500 hover:underline'>
-            {showReplies ? 'Hide Replies' : `View Replies (${replies.length})`}
-          </button>
-        )}
       </div>
 
       {/* Reply Form */}
@@ -187,23 +179,8 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
           </div>
         </div>
       )}
-
-      {showReplies && replies && replies.length > 0 && (
-        <div className='ml-8'>
-          {replies.map((reply, index) => (
-            <div key={index} className='relative'>
-              <SubCommentItem
-                commentSnippet={reply.snippet}
-                commentId={reply.id ?? ''}
-                onReply={(replyText) => onReply?.(replyText, reply.id ?? '')}
-                onDeleteReply={onDeleteReply}
-              />
-            </div>
-          ))}
-        </div>
-      )}
     </article>
   )
 }
 
-export default CommentItem
+export default SubCommentItem

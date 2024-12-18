@@ -1,4 +1,6 @@
+import { DialogType } from '@app/common/types/dialogSlice.type'
 import { useAppDispatch, useAppSelector } from '@app/stores'
+import { showDialog } from '@app/stores/slices/dialog.slice'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { resetCommentActivityState, setListComments, setVideoTitle } from '../slices'
@@ -39,28 +41,8 @@ const useCommentManagerViewModel = () => {
 
       if (!newComment.trim()) return
 
-      const tempComment = {
-        id: `temp-${Date.now()}`,
-        snippet: {
-          topLevelComment: {
-            snippet: {
-              textOriginal: newComment,
-              authorDisplayName: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getName() || 'You',
-              authorProfileImageUrl:
-                gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getImageUrl() || '',
-              publishedAt: new Date().toISOString()
-            }
-          }
-        },
-        replies: null
-      }
-
-      dispatch(setListComments([tempComment, ...comments]))
-
-      setNewComment('')
-
       try {
-        await gapi.client.youtube.commentThreads.insert({
+        const response = await gapi.client.youtube.commentThreads.insert({
           part: 'snippet',
           resource: {
             snippet: {
@@ -73,13 +55,28 @@ const useCommentManagerViewModel = () => {
             }
           }
         })
-        console.log('Insert Comment Successfully!')
+
+        const newCommentThread = response.result // The new comment thread from the API response
+
+        // Append the new comment to the current list
+        const updatedComments = [newCommentThread, ...comments]
+        dispatch(setListComments(updatedComments))
+
+        setNewComment('')
+        console.log('Comment added successfully!')
       } catch (error) {
         console.error('Error posting comment:', error)
-        dispatch(setListComments(comments.filter((comment) => comment.id !== tempComment.id)))
+
+        dispatch(
+          showDialog({
+            title: 'Error',
+            content: 'Failed to post the comment. Please try again.',
+            type: DialogType.ERROR
+          })
+        )
       }
     },
-    [newComment]
+    [newComment, comments, videoId]
   )
 
   const deleteComment = useCallback(
@@ -99,6 +96,13 @@ const useCommentManagerViewModel = () => {
         console.log(`Comment with ID: ${commentId} has been deleted.`)
       } catch (error) {
         console.error('Error deleting comment:', error)
+        dispatch(
+          showDialog({
+            title: 'Error',
+            content: 'Cannot Delete Comment Right Now!',
+            type: DialogType.ERROR
+          })
+        )
         dispatch(setListComments(comments))
       }
     },
@@ -116,118 +120,12 @@ const useCommentManagerViewModel = () => {
     }
   }, [])
 
-  // const replyToComment = useCallback(
-  //   async (parentId: string, replyText: string) => {
-  //     if (!replyText.trim()) return
-
-  //     const tempReply = {
-  //       id: `temp-reply-${Date.now()}`,
-  //       snippet: {
-  //         textOriginal: replyText,
-  //         authorDisplayName: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getName() || 'You',
-  //         authorProfileImageUrl: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getImageUrl() || '',
-  //         publishedAt: new Date().toISOString()
-  //       }
-  //     }
-
-  //     const updatedComments = comments.map((comment) => {
-  //       if (comment.id === parentId) {
-  //         return {
-  //           ...comment,
-  //           replies: {
-  //             comments: [...(comment.replies?.comments || []), tempReply] // Sử dụng giá trị mặc định []
-  //           }
-  //         }
-  //       }
-  //       return comment
-  //     })
-
-  //     dispatch(setListComments(updatedComments))
-
-  //     try {
-  //       await gapi.client.youtube.comments.insert({
-  //         part: 'snippet',
-  //         resource: {
-  //           snippet: {
-  //             parentId, // ID của comment cha
-  //             textOriginal: replyText
-  //           }
-  //         }
-  //       })
-
-  //       console.log('Reply added successfully!')
-  //     } catch (error) {
-  //       console.error('Error posting reply:', error)
-
-  //       const rollbackComments = comments.map((comment) => {
-  //         if (comment.id === parentId) {
-  //           return {
-  //             ...comment,
-  //             replies: {
-  //               comments: comment.replies?.comments.filter((reply) => reply.id !== tempReply.id) || []
-  //             }
-  //           }
-  //         }
-  //         return comment
-  //       })
-
-  //       dispatch(setListComments(rollbackComments))
-  //     }
-  //   },
-  //   [comments]
-  // )
-
   const replyToComment = useCallback(
     async (parentId: string, replyText: string) => {
       if (!replyText.trim()) return
 
-      const tempReply = {
-        id: `temp-reply-${Date.now()}`,
-        parentId,
-        snippet: {
-          textOriginal: replyText,
-          authorDisplayName: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getName() || 'You',
-          authorProfileImageUrl: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getImageUrl() || '',
-          publishedAt: new Date().toISOString()
-        }
-      }
-
-      const updatedComments = comments.map((comment) => {
-        if (comment.id === parentId) {
-          // Trả lời top-level comment
-          return {
-            ...comment,
-            replies: {
-              comments: [...(comment.replies?.comments || []), tempReply]
-            }
-          }
-        }
-
-        if (comment.replies?.comments) {
-          return {
-            ...comment,
-            replies: {
-              comments: comment.replies.comments.map((reply: any) => {
-                if (reply.id === parentId) {
-                  return {
-                    ...reply,
-                    replies: {
-                      comments: [...(reply.replies?.comments || []), tempReply]
-                    }
-                  }
-                }
-                return reply
-              })
-            }
-          }
-        }
-
-        return comment
-      })
-
-      dispatch(setListComments(updatedComments))
-
       try {
+        // Send API request to post the reply
         const response = await gapi.client.youtube.comments.insert({
           part: 'snippet',
           resource: {
@@ -238,81 +136,87 @@ const useCommentManagerViewModel = () => {
           }
         })
 
-        console.log(response)
+        const newReply = response.result
 
-        console.log('Reply added successfully!')
-      } catch (error) {
-        console.error('Error posting reply:', error)
-
-        // Rollback giao diện nếu API lỗi
-        const rollbackComments = comments.map((comment) => {
+        const updatedComments = comments.map((comment) => {
           if (comment.id === parentId) {
             return {
               ...comment,
               replies: {
-                comments: comment.replies?.comments?.filter((reply) => reply.id !== tempReply.id) || []
+                comments: [...(comment.replies?.comments || []), newReply]
               }
             }
           }
           return comment
         })
 
-        dispatch(setListComments(rollbackComments))
+        dispatch(setListComments(updatedComments))
+
+        console.log('Reply added successfully!')
+      } catch (error) {
+        console.error('Error posting reply:', error)
+
+        // Show error dialog
+        dispatch(
+          showDialog({
+            title: 'Error',
+            content: 'Failed to add reply. Please try again.',
+            type: DialogType.ERROR
+          })
+        )
       }
     },
     [comments]
   )
 
-  const deleteReply = useCallback(
-    async (parentId: string, replyId: string) => {
-      if (!replyId) {
-        console.error('Reply ID is undefined. Cannot delete reply.')
-        return
-      }
+  const deleteReply = async (parentId: string, replyId: string) => {
+    if (!replyId) {
+      console.error('Reply ID is undefined. Cannot delete reply.')
+      return
+    }
 
-      // Cập nhật giao diện tạm thời
-      const updatedComments = comments.map((comment) => {
+    // Update UI temporarily by filtering out the reply
+    const updatedComments = comments.map((comment) => {
+      if (comment.id === parentId) {
+        return {
+          ...comment,
+          replies: {
+            comments: comment.replies?.comments?.filter((reply) => reply.id !== replyId) || []
+          }
+        }
+      }
+      return comment
+    })
+
+    dispatch(setListComments(updatedComments))
+
+    try {
+      await gapi.client.youtube.comments.delete({
+        id: replyId
+      })
+
+      console.log(`Reply with ID: ${replyId} has been deleted.`)
+    } catch (error) {
+      console.error('Error deleting reply:', error)
+
+      // Rollback UI state if the API request fails
+      const rollbackComments = comments.map((comment) => {
         if (comment.id === parentId) {
           return {
             ...comment,
             replies: {
-              comments: comment.replies?.comments?.filter((reply) => reply.id !== replyId) || []
+              comments: [...(comment.replies?.comments || []), comments.find((reply) => reply.id === replyId)].filter(
+                Boolean
+              )
             }
           }
         }
         return comment
       })
 
-      dispatch(setListComments(updatedComments))
-
-      try {
-        // Gửi API để xóa reply
-        await gapi.client.youtube.comments.delete({
-          id: replyId
-        })
-
-        console.log(`Reply with ID: ${replyId} has been deleted.`)
-      } catch (error) {
-        console.error('Error deleting reply:', error)
-
-        // Rollback giao diện nếu API lỗi
-        const rollbackComments = comments.map((comment) => {
-          if (comment.id === parentId) {
-            return {
-              ...comment,
-              replies: {
-                comments: [...(comment.replies?.comments || []), comments.find((comment) => comment.id === replyId)]
-              }
-            }
-          }
-          return comment
-        })
-
-        dispatch(setListComments(rollbackComments))
-      }
-    },
-    [comments]
-  )
+      dispatch(setListComments(rollbackComments))
+    }
+  }
 
   return { postComment, deleteComment, newComment, setNewComment, videoId, replyToComment, deleteReply }
 }

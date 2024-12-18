@@ -9,6 +9,7 @@ export const getListComments = createAsyncThunk(
         videoId: videoId,
         maxResults: 10
       })
+      console.log(response)
 
       return response
     } catch (error: any) {
