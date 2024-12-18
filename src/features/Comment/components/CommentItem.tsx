@@ -51,7 +51,9 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
   }
 
   const handleReplySubmit = () => {
-    if (replyText.trim() && onReply) {
+    if (replyText.trim() !== '' && onReply) {
+      console.log('reply')
+
       onReply(replyText)
       setReplyText('')
       setIsReplying(false)
@@ -69,17 +71,13 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
         content: 'Are you sure you want to delete this comment?',
         cancelButtonText: 'Cancel',
         confirmButtonText: 'Delete',
-        type: DialogType.ALERT
+        type: DialogType.ALERT,
+        onConfirm() {
+          if (onDelete) onDelete()
+          dispatch(hideDialog())
+        }
       })
     )
-
-    // Handle delete confirm outside Redux
-    const confirmDelete = () => {
-      if (onDelete) onDelete()
-      dispatch(hideDialog())
-    }
-
-    document.addEventListener('confirmDialog', confirmDelete, { once: true })
   }
 
   useEffect(() => {
@@ -190,16 +188,19 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
         </div>
       )}
 
-      {/* Replies List */}
       {showReplies && replies && replies.length > 0 && (
         <div className='ml-8'>
           {replies.map((reply, index) => (
-            <CommentItem key={index} commentSnippet={reply.snippet} onDelete={() => onDeleteReply?.(reply.id || '')} />
+            <CommentItem
+              key={index}
+              commentSnippet={reply.snippet}
+              onReply={(replyText) => onReply?.(replyText, reply.id ?? '')} //
+              onDeleteReply={(replyId) => onDeleteReply?.(replyId)} // Truyền ID của reply cần xóa
+            />
           ))}
         </div>
       )}
 
-      {/* Divider */}
       <hr className='mt-4 border-gray-600' />
     </article>
   )

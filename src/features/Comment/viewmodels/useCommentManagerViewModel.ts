@@ -115,7 +115,205 @@ const useCommentManagerViewModel = () => {
       dispatch(resetCommentActivityState())
     }
   }, [])
-  return { postComment, deleteComment, newComment, setNewComment, videoId }
+
+  // const replyToComment = useCallback(
+  //   async (parentId: string, replyText: string) => {
+  //     if (!replyText.trim()) return
+
+  //     const tempReply = {
+  //       id: `temp-reply-${Date.now()}`,
+  //       snippet: {
+  //         textOriginal: replyText,
+  //         authorDisplayName: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getName() || 'You',
+  //         authorProfileImageUrl: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getImageUrl() || '',
+  //         publishedAt: new Date().toISOString()
+  //       }
+  //     }
+
+  //     const updatedComments = comments.map((comment) => {
+  //       if (comment.id === parentId) {
+  //         return {
+  //           ...comment,
+  //           replies: {
+  //             comments: [...(comment.replies?.comments || []), tempReply] // Sử dụng giá trị mặc định []
+  //           }
+  //         }
+  //       }
+  //       return comment
+  //     })
+
+  //     dispatch(setListComments(updatedComments))
+
+  //     try {
+  //       await gapi.client.youtube.comments.insert({
+  //         part: 'snippet',
+  //         resource: {
+  //           snippet: {
+  //             parentId, // ID của comment cha
+  //             textOriginal: replyText
+  //           }
+  //         }
+  //       })
+
+  //       console.log('Reply added successfully!')
+  //     } catch (error) {
+  //       console.error('Error posting reply:', error)
+
+  //       const rollbackComments = comments.map((comment) => {
+  //         if (comment.id === parentId) {
+  //           return {
+  //             ...comment,
+  //             replies: {
+  //               comments: comment.replies?.comments.filter((reply) => reply.id !== tempReply.id) || []
+  //             }
+  //           }
+  //         }
+  //         return comment
+  //       })
+
+  //       dispatch(setListComments(rollbackComments))
+  //     }
+  //   },
+  //   [comments]
+  // )
+
+  const replyToComment = useCallback(
+    async (parentId: string, replyText: string) => {
+      if (!replyText.trim()) return
+
+      const tempReply = {
+        id: `temp-reply-${Date.now()}`,
+        parentId, // Gán parentId để xác định cha của reply này
+        snippet: {
+          textOriginal: replyText,
+          authorDisplayName: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getName() || 'You',
+          authorProfileImageUrl: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getImageUrl() || '',
+          publishedAt: new Date().toISOString()
+        }
+      }
+
+      const updatedComments = comments.map((comment) => {
+        if (comment.id === parentId) {
+          // Trả lời comment cấp cao nhất
+          return {
+            ...comment,
+            replies: {
+              comments: [...(comment.replies?.comments || []), tempReply]
+            }
+          }
+        }
+
+        if (comment.replies?.comments) {
+          // Trả lời nested reply
+          return {
+            ...comment,
+            replies: {
+              comments: comment.replies.comments.map((reply) => {
+                if (reply.id === parentId) {
+                  return {
+                    ...reply,
+                    replies: {
+                      comments: [...(reply.replies?.comments || []), tempReply]
+                    }
+                  }
+                }
+                return reply
+              })
+            }
+          }
+        }
+
+        return comment
+      })
+
+      dispatch(setListComments(updatedComments))
+
+      try {
+        const response = await gapi.client.youtube.comments.insert({
+          part: 'snippet',
+          resource: {
+            snippet: {
+              parentId,
+              textOriginal: replyText
+            }
+          }
+        })
+
+        console.log('Reply added successfully!')
+      } catch (error) {
+        console.error('Error posting reply:', error)
+
+        // Rollback giao diện nếu API lỗi
+        const rollbackComments = comments.map((comment) => {
+          if (comment.id === parentId) {
+            return {
+              ...comment,
+              replies: {
+                comments: comment.replies?.comments.filter((reply) => reply.id !== tempReply.id) || []
+              }
+            }
+          }
+          return comment
+        })
+
+        dispatch(setListComments(rollbackComments))
+      }
+    },
+    [comments]
+  )
+
+  const deleteReply = useCallback(
+    async (parentId: string, replyId: string) => {
+      if (!replyId) {
+        console.error('Reply ID is undefined. Cannot delete reply.')
+        return
+      }
+
+      // Cập nhật giao diện tạm thời
+      const updatedComments = comments.map((comment) => {
+        if (comment.id === parentId) {
+          return {
+            ...comment,
+            replies: {
+              comments: comment.replies?.comments.filter((reply) => reply.id !== replyId) || []
+            }
+          }
+        }
+        return comment
+      })
+
+      dispatch(setListComments(updatedComments))
+
+      try {
+        // Gửi API để xóa reply
+        await gapi.client.youtube.comments.delete({
+          id: replyId
+        })
+
+        console.log(`Reply with ID: ${replyId} has been deleted.`)
+      } catch (error) {
+        console.error('Error deleting reply:', error)
+
+        // Rollback giao diện nếu API lỗi
+        const rollbackComments = comments.map((comment) => {
+          if (comment.id === parentId) {
+            return {
+              ...comment,
+              replies: {
+                comments: [...(comment.replies?.comments || []), comments.find((comment) => comment.id === replyId)]
+              }
+            }
+          }
+          return comment
+        })
+
+        dispatch(setListComments(rollbackComments))
+      }
+    },
+    [comments]
+  )
+
+  return { postComment, deleteComment, newComment, setNewComment, videoId, replyToComment, deleteReply }
 }
 
 export default useCommentManagerViewModel

@@ -9,7 +9,8 @@ const CommentManager: React.FC = () => {
     videoTitle
   } = useAppSelector((state) => state.videoComment)
 
-  const { deleteComment, postComment, newComment, setNewComment, videoId } = useCommentManagerViewModel()
+  const { deleteComment, postComment, newComment, setNewComment, videoId, replyToComment, deleteReply } =
+    useCommentManagerViewModel()
 
   return (
     <div className='p-4'>
@@ -67,6 +68,8 @@ const CommentManager: React.FC = () => {
                   replies={comment.replies?.comments}
                   key={index}
                   onDelete={() => deleteComment(comment.id)}
+                  onReply={(replyText) => replyToComment(comment.id ?? '', replyText)}
+                  onDeleteReply={(replyId) => deleteReply(comment.id ?? '', replyId)}
                 />
               )
             })
