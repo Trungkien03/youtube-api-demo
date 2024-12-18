@@ -26,7 +26,7 @@ const Router = () => {
           element: <ChannelActivities />
         },
         {
-          path: appRoutes.COMMENTS,
+          path: `${appRoutes.COMMENTS}/:videoId`,
           element: <CommentManager />
         }
       ]
