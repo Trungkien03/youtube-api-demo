@@ -2,6 +2,7 @@ import { initGapi } from '@app/services/youtubeServices'
 import { useAppDispatch, useAppSelector } from '@app/stores'
 import { useEffect, useRef } from 'react'
 import { getListActivities, getStats } from '../slices/actions'
+import { resetActivitiesState } from '../slices'
 
 const useActivitiesViewModel = () => {
   const dispatch = useAppDispatch()
@@ -11,22 +12,25 @@ const useActivitiesViewModel = () => {
   useEffect(() => {
     initGapi()
       .then(() => {
-        fetchActivities()
+        dispatch(getListActivities({ pageToken: undefined }))
         fetchStats()
       })
       .catch((error) => console.error('Error initializing GAPI:', error))
+
+    return () => {
+      dispatch(resetActivitiesState())
+    }
   }, [])
 
   // Fetch Activities Function
-  const fetchActivities = (pageToken?: string) => {
-    dispatch(getListActivities({ pageToken }))
+  const fetchMoreActivities = (pageToken?: string) => {
+    if (pageToken) dispatch(getListActivities({ pageToken }))
   }
 
   const fetchStats = () => {
     dispatch(getStats())
   }
 
-  // Scroll Logic: Chạm tới item cuối cùng mới load
   useEffect(() => {
     const handleScroll = () => {
       if (lastItemRef.current) {
@@ -34,7 +38,7 @@ const useActivitiesViewModel = () => {
         const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight
 
         if (isVisible && nextPageToken && !isLoadingGetActivities) {
-          fetchActivities(nextPageToken)
+          fetchMoreActivities(nextPageToken)
         }
       }
     }

@@ -10,6 +10,6 @@ export type ConfigValue = {
 // ----------------------------------------------------------------------
 
 export const CONFIG: ConfigValue = {
-  appName: 'Youtube Dashboard',
+  appName: 'Youtube Reports',
   appVersion: packageJson.version
 }

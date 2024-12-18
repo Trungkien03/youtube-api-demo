@@ -2,7 +2,7 @@ export interface ActivitiesScreenState {
   activities: {
     isLoadingGetActivities: boolean
     items: gapi.client.youtube.Activity[]
-    nextPageToken: string | null
+    nextPageToken: string | undefined
   }
   stats: {
     isLoadingGetStats: boolean
@@ -14,7 +14,7 @@ export const initialActivitiesScreenState: ActivitiesScreenState = {
   activities: {
     isLoadingGetActivities: false,
     items: [],
-    nextPageToken: null
+    nextPageToken: undefined
   },
   stats: {
     isLoadingGetStats: false,

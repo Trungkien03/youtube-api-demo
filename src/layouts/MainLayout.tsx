@@ -31,7 +31,7 @@ const MainLayout: React.FC = () => {
       <nav className='bg-gray-900 border-gray-200'>
         <div className='max-w-screen-2xl flex flex-wrap items-center justify-between mx-auto p-5'>
           {/* Logo */}
-          <Link to='/' className='flex items-center space-x-3 rtl:space-x-reverse'>
+          <Link to='/reports' className='flex items-center space-x-3 rtl:space-x-reverse'>
             <img
               loading='lazy'
               src='https://www.svgrepo.com/show/475700/youtube-color.svg'

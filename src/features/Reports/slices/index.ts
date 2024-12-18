@@ -14,10 +14,11 @@ const channelActivitySlice = createSlice({
         state.activities.isLoadingGetActivities = true
       })
       .addCase(getListActivities.fulfilled, (state, action) => {
-        state.activities.items = action.payload.result.items ?? []
-        state.activities.nextPageToken = action.payload.result.nextPageToken ?? null
+        state.activities.items = [...state.activities.items, ...(action.payload.result.items ?? [])]
+        state.activities.nextPageToken = action.payload.result.nextPageToken ?? undefined
         state.activities.isLoadingGetActivities = false
       })
+
       .addCase(getListActivities.rejected, (state) => {
         state.activities.isLoadingGetActivities = false
       })

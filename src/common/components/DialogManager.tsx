@@ -88,7 +88,7 @@ const DialogManager: React.FC = () => {
         </div>
 
         {!isCustomizeButton && (
-          <div className='flex justify-center mt-6 space-x-4'>
+          <div className='flex justify-between mt-6 space-x-4'>
             {type !== DialogType.NORMAL && (
               <button
                 onClick={handleCancel}
