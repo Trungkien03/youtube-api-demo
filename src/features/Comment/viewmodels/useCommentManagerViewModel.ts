@@ -8,6 +8,7 @@ import { getListComments } from '../slices/actions'
 
 const useCommentManagerViewModel = () => {
   const { videoId } = useParams<{ videoId: string }>()
+  const [isLoadingPostingComment, setIsLoadingPostingComment] = useState<boolean>(false)
 
   const [newComment, setNewComment] = useState<string>('')
 
@@ -37,8 +38,8 @@ const useCommentManagerViewModel = () => {
 
   const postComment = useCallback(
     async (e: React.FormEvent) => {
+      setIsLoadingPostingComment(true)
       e.preventDefault()
-
       if (!newComment.trim()) return
 
       try {
@@ -56,17 +57,21 @@ const useCommentManagerViewModel = () => {
           }
         })
 
-        const newCommentThread = response.result // The new comment thread from the API response
+        const newCommentThread = response.result
 
-        // Append the new comment to the current list
-        const updatedComments = [newCommentThread, ...comments]
-        dispatch(setListComments(updatedComments))
+        const updatedComments = comments.map((comment) =>
+          comment.id === newCommentThread.id ? newCommentThread : comment
+        )
 
-        setNewComment('')
+        const finalComments = updatedComments.some((comment) => comment.id === newCommentThread.id)
+          ? updatedComments
+          : [newCommentThread, ...comments]
+
+        dispatch(setListComments(finalComments))
+        setNewComment('') // Reset input
         console.log('Comment added successfully!')
       } catch (error) {
         console.error('Error posting comment:', error)
-
         dispatch(
           showDialog({
             title: 'Error',
@@ -74,9 +79,67 @@ const useCommentManagerViewModel = () => {
             type: DialogType.ERROR
           })
         )
+      } finally {
+        setIsLoadingPostingComment(false)
       }
     },
     [newComment, comments, videoId]
+  )
+
+  const updateComment = useCallback(
+    async (commentId: string, updatedText: string) => {
+      if (!updatedText.trim()) return
+
+      // Temporarily update the UI
+      const updatedComments = comments.map((comment) => {
+        if (comment.snippet?.topLevelComment?.id === commentId) {
+          return {
+            ...comment,
+            snippet: {
+              ...comment.snippet,
+              topLevelComment: {
+                ...comment.snippet.topLevelComment,
+                snippet: {
+                  ...comment.snippet.topLevelComment.snippet,
+                  textOriginal: updatedText
+                }
+              }
+            }
+          }
+        }
+        return comment
+      })
+
+      dispatch(setListComments(updatedComments))
+
+      try {
+        // Send API request to update the comment
+        await gapi.client.youtube.comments.update({
+          part: 'snippet',
+          resource: {
+            id: commentId,
+            snippet: {
+              textOriginal: updatedText
+            }
+          }
+        })
+
+        console.log(`Comment with ID: ${commentId} has been updated.`)
+      } catch (error) {
+        console.error('Error updating comment:', error)
+
+        // Rollback UI changes
+        dispatch(
+          showDialog({
+            title: 'Error',
+            content: 'Failed to update the comment. Please try again.',
+            type: DialogType.ERROR
+          })
+        )
+        dispatch(setListComments(comments)) // Restore original comments
+      }
+    },
+    [comments]
   )
 
   const deleteComment = useCallback(
@@ -218,7 +281,78 @@ const useCommentManagerViewModel = () => {
     }
   }
 
-  return { postComment, deleteComment, newComment, setNewComment, videoId, replyToComment, deleteReply }
+  // Function to update a reply
+  const updateReply = useCallback(
+    async (parentId: string, replyId: string, updatedText: string) => {
+      if (!updatedText.trim()) return
+
+      // Temporarily update the UI
+      const updatedComments = comments.map((comment) => {
+        if (comment.id === parentId) {
+          return {
+            ...comment,
+            replies: {
+              comments: comment.replies?.comments?.map((reply) => {
+                if (reply.id === replyId) {
+                  return {
+                    ...reply,
+                    snippet: {
+                      ...reply.snippet,
+                      textOriginal: updatedText
+                    }
+                  }
+                }
+                return reply
+              })
+            }
+          }
+        }
+        return comment
+      })
+
+      dispatch(setListComments(updatedComments))
+
+      try {
+        // Send API request to update the reply
+        await gapi.client.youtube.comments.update({
+          part: 'snippet',
+          resource: {
+            id: replyId,
+            snippet: {
+              textOriginal: updatedText
+            }
+          }
+        })
+
+        console.log(`Reply with ID: ${replyId} has been updated.`)
+      } catch (error) {
+        console.error('Error updating reply:', error)
+
+        // Rollback UI changes
+        dispatch(
+          showDialog({
+            title: 'Error',
+            content: 'Failed to update the reply. Please try again.',
+            type: DialogType.ERROR
+          })
+        )
+        dispatch(setListComments(comments)) // Restore original comments
+      }
+    },
+    [comments]
+  )
+  return {
+    postComment,
+    deleteComment,
+    newComment,
+    setNewComment,
+    videoId,
+    replyToComment,
+    deleteReply,
+    isLoadingPostingComment,
+    updateComment,
+    updateReply
+  }
 }
 
 export default useCommentManagerViewModel

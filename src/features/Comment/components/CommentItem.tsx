@@ -1,94 +1,59 @@
-import { DialogType } from '@app/common/types/dialogSlice.type'
-import { useAppDispatch } from '@app/stores'
-import { hideDialog, showDialog } from '@app/stores/slices/dialog.slice'
 import { fDate } from '@app/utils/format-time'
-import { useEffect, useRef, useState } from 'react'
+import useCommentItemViewModel from '../viewmodels/useCommentItemViewModel'
 import SubCommentItem from './SubCommentItem'
 
 type CommentItemProps = {
   commentSnippet: gapi.client.youtube.CommentSnippet | undefined
   commentId: string
-  replies?: gapi.client.youtube.Comment[]
+  replies: gapi.client.youtube.Comment[]
   onDelete?: () => void
   onReply?: (replyText: string, parentId: string) => void
   onDeleteReply?: (replyId: string) => void
+  onUpdate?: (commentId: string, updatedText: string) => void
+  onUpDateReply: (replyId: string, updatedText: string) => Promise<void>
 }
 
-const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply, commentId }: CommentItemProps) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isReplying, setIsReplying] = useState(false)
-  const [showReplies, setShowReplies] = useState(false)
-  const [commentText, setCommentText] = useState(commentSnippet?.textOriginal || '')
-  const [replyText, setReplyText] = useState('')
-  const [originalComment, setOriginalComment] = useState(commentSnippet?.textOriginal || '')
-
-  const dispatch = useAppDispatch()
-
-  const editRef = useRef<HTMLDivElement>(null)
-
-  const toggleDropdown = () => setIsDropdownOpen((prev) => !prev)
-
-  const handleEdit = () => {
-    setIsEditing(true)
-    setIsDropdownOpen(false)
-  }
+const CommentItem = ({
+  commentSnippet,
+  replies,
+  onDelete,
+  onReply,
+  onDeleteReply,
+  onUpdate,
+  commentId,
+  onUpDateReply
+}: CommentItemProps) => {
+  const {
+    isDropdownOpen,
+    isEditing,
+    isReplying,
+    showReplies,
+    commentText,
+    replyText,
+    editRef,
+    toggleDropdown,
+    handleEdit,
+    handleEditCancel,
+    handleReply,
+    handleReplyCancel,
+    handleReplySubmit,
+    toggleReplies,
+    setCommentText,
+    setReplyText
+  } = useCommentItemViewModel({
+    commentSnippet,
+    commentId,
+    replies,
+    onDelete,
+    onReply
+  })
 
   const handleEditSubmit = () => {
-    setIsEditing(false)
-    setOriginalComment(commentText)
-    console.log('Edited Comment:', commentText)
-  }
-
-  const handleEditCancel = () => {
-    setIsEditing(false)
-    setCommentText(originalComment)
-  }
-
-  const handleReply = () => setIsReplying(true)
-
-  const handleReplyCancel = () => {
-    setIsReplying(false)
-    setReplyText('')
-  }
-
-  const handleReplySubmit = () => {
-    if (replyText.trim() !== '' && onReply) {
-      onReply(replyText, commentId)
-      setReplyText('')
-      setIsReplying(false)
+    if (commentText.trim() && onUpdate) {
+      onUpdate(commentId, commentText)
+      handleEditCancel()
     }
   }
-
-  const toggleReplies = () => setShowReplies((prev) => !prev)
-
-  const handleRemove = () => {
-    setIsDropdownOpen(false)
-
-    dispatch(
-      showDialog({
-        title: 'Delete Comment',
-        content: 'Are you sure you want to delete this comment?',
-        cancelButtonText: 'Cancel',
-        confirmButtonText: 'Delete',
-        type: DialogType.ALERT,
-        onConfirm() {
-          if (onDelete) onDelete()
-          dispatch(hideDialog())
-        }
-      })
-    )
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (editRef.current && !editRef.current.contains(event.target as Node)) {
-        if (isEditing) handleEditCancel()
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isEditing])
 
   return (
     <article className='p-6 text-base bg-white rounded-lg dark:bg-gray-900 mb-2'>
@@ -98,9 +63,7 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
           <p className='inline-flex items-center mr-3 text-sm text-gray-900 dark:text-white font-semibold'>
             <img
               className='mr-2 w-6 h-6 rounded-full'
-              src={
-                commentSnippet?.authorProfileImageUrl || 'https://flowbite.com/docs/images/people/profile-picture-2.jpg'
-              }
+              src={commentSnippet?.authorProfileImageUrl || 'default-image-url.jpg'}
               alt={commentSnippet?.authorDisplayName}
             />
             {commentSnippet?.authorDisplayName}
@@ -114,20 +77,15 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
 
         {/* Dropdown Menu */}
         <div className='relative'>
-          <button
-            onClick={toggleDropdown}
-            className='inline-flex items-center p-2 text-sm font-medium text-gray-400 dark:text-gray-400'
-          >
-            <svg className='w-4 h-4' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 3' fill='currentColor'>
-              <path d='M2 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm6.041 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM14 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z' />
-            </svg>
+          <button onClick={toggleDropdown} className='p-2 text-sm font-medium text-gray-400'>
+            •••
           </button>
           {isDropdownOpen && (
             <div className='absolute right-0 mt-2 w-36 bg-gray-700 rounded shadow-lg'>
               <button onClick={handleEdit} className='block w-full px-4 py-2 text-sm hover:bg-gray-500'>
                 Edit
               </button>
-              <button onClick={handleRemove} className='block w-full px-4 py-2 text-sm hover:bg-gray-500'>
+              <button onClick={onDelete} className='block w-full px-4 py-2 text-sm hover:bg-gray-500'>
                 Remove
               </button>
             </div>
@@ -153,22 +111,21 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
           </div>
         </div>
       ) : (
-        <p className='text-gray-200'>{commentSnippet?.textOriginal}</p>
+        <p>{commentSnippet?.textOriginal}</p>
       )}
 
-      {/* Reply Button */}
-      <div className='flex items-center mt-4 space-x-4'>
+      {/* Reply and Replies */}
+      <div className='flex mt-4 space-x-4'>
         <button onClick={handleReply} className='text-sm text-gray-500 hover:underline'>
           Reply
         </button>
-        {replies && replies.length > 0 && (
+        {replies?.length > 0 && (
           <button onClick={toggleReplies} className='text-sm text-gray-500 hover:underline'>
             {showReplies ? 'Hide Replies' : `View Replies (${replies.length})`}
           </button>
         )}
       </div>
 
-      {/* Reply Form */}
       {isReplying && (
         <div className='mt-2'>
           <textarea
@@ -188,20 +145,17 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
         </div>
       )}
 
-      {showReplies && replies && replies.length > 0 && (
-        <div className='ml-8'>
-          {replies.map((reply, index) => (
-            <div key={index} className='relative'>
-              <SubCommentItem
-                commentSnippet={reply.snippet}
-                commentId={reply.id ?? ''}
-                onReply={(replyText) => onReply?.(replyText, reply.id ?? '')}
-                onDeleteReply={onDeleteReply}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      {showReplies &&
+        replies?.map((reply, index) => (
+          <SubCommentItem
+            key={index}
+            commentSnippet={reply.snippet}
+            commentId={reply.id ?? ''}
+            onReply={onReply}
+            onDeleteReply={onDeleteReply}
+            onUpDateReply={onUpDateReply}
+          />
+        ))}
     </article>
   )
 }

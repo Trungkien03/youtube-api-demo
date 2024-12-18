@@ -9,8 +9,18 @@ const CommentManager: React.FC = () => {
     videoTitle
   } = useAppSelector((state) => state.videoComment)
 
-  const { deleteComment, postComment, newComment, setNewComment, videoId, replyToComment, deleteReply } =
-    useCommentManagerViewModel()
+  const {
+    deleteComment,
+    postComment,
+    newComment,
+    setNewComment,
+    videoId,
+    replyToComment,
+    deleteReply,
+    isLoadingPostingComment,
+    updateComment,
+    updateReply
+  } = useCommentManagerViewModel()
 
   return (
     <div className='p-4'>
@@ -57,6 +67,7 @@ const CommentManager: React.FC = () => {
 
           {/* Comments List */}
           <h3 className='text-xl font-bold mb-4 text-white'>Comments</h3>
+          {isLoadingPostingComment && <p className='text-gray-400 text-center my-3'>Posting comment...</p>}
           {isLoadingGetComments ? (
             <p className='text-gray-400 text-center'>Loading comments...</p>
           ) : comments.length > 0 ? (
@@ -65,12 +76,14 @@ const CommentManager: React.FC = () => {
               return (
                 <CommentItem
                   commentSnippet={commentSnippet}
-                  replies={comment.replies?.comments}
+                  replies={comment.replies?.comments ?? []}
                   key={index}
                   commentId={comment.id ?? ''}
                   onDelete={() => deleteComment(comment.id)}
                   onReply={(replyText) => replyToComment(comment.id ?? '', replyText)}
                   onDeleteReply={(replyId) => deleteReply(comment.id ?? '', replyId)}
+                  onUpdate={updateComment}
+                  onUpDateReply={(replyId, updatedText) => updateReply(comment.id ?? '', replyId, updatedText)}
                 />
               )
             })

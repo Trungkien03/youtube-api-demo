@@ -9,9 +9,10 @@ type SubCommentItemProps = {
   commentId: string
   onReply?: (replyText: string, parentId: string) => void
   onDeleteReply?: (replyId: string) => void
+  onUpDateReply: (replyId: string, updatedText: string) => Promise<void>
 }
 
-const SubCommentItem = ({ commentSnippet, onReply, onDeleteReply, commentId }: SubCommentItemProps) => {
+const SubCommentItem = ({ commentSnippet, onReply, onDeleteReply, commentId, onUpDateReply }: SubCommentItemProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
@@ -33,6 +34,7 @@ const SubCommentItem = ({ commentSnippet, onReply, onDeleteReply, commentId }: S
   const handleEditSubmit = () => {
     setIsEditing(false)
     setOriginalComment(commentText)
+    onUpDateReply(commentId, commentText)
     console.log('Edited Comment:', commentText)
   }
 
