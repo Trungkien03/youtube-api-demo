@@ -6,13 +6,14 @@ import { useEffect, useRef, useState } from 'react'
 
 type CommentItemProps = {
   commentSnippet: gapi.client.youtube.CommentSnippet | undefined
+  commentId: string
   replies?: gapi.client.youtube.Comment[]
   onDelete?: () => void
-  onReply?: (replyText: string) => void
+  onReply?: (replyText: string, parentId: string) => void
   onDeleteReply?: (replyId: string) => void
 }
 
-const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply }: CommentItemProps) => {
+const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply, commentId }: CommentItemProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
@@ -52,9 +53,7 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
 
   const handleReplySubmit = () => {
     if (replyText.trim() !== '' && onReply) {
-      console.log('reply')
-
-      onReply(replyText)
+      onReply(replyText, commentId)
       setReplyText('')
       setIsReplying(false)
     }
@@ -179,9 +178,9 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
           />
           <div className='flex gap-2'>
             <button onClick={handleReplySubmit} className='px-3 py-1 bg-blue-600 text-white rounded'>
-              Post Reply
+              Post
             </button>
-            <button onClick={handleReplyCancel} className='px-3 py-1 bg-gray-400 text-white rounded'>
+            <button onClick={handleReplyCancel} className='px-3 py-1 bg-gray-600 text-white rounded'>
               Cancel
             </button>
           </div>
@@ -194,8 +193,9 @@ const CommentItem = ({ commentSnippet, replies, onDelete, onReply, onDeleteReply
             <CommentItem
               key={index}
               commentSnippet={reply.snippet}
-              onReply={(replyText) => onReply?.(replyText, reply.id ?? '')} //
-              onDeleteReply={(replyId) => onDeleteReply?.(replyId)} // Truyền ID của reply cần xóa
+              commentId={commentId}
+              onReply={(replyText) => onReply?.(replyText, reply.id ?? '')}
+              onDeleteReply={(replyId) => onDeleteReply?.(replyId)}
             />
           ))}
         </div>

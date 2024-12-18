@@ -67,6 +67,7 @@ const CommentManager: React.FC = () => {
                   commentSnippet={commentSnippet}
                   replies={comment.replies?.comments}
                   key={index}
+                  commentId={comment.id ?? ''}
                   onDelete={() => deleteComment(comment.id)}
                   onReply={(replyText) => replyToComment(comment.id ?? '', replyText)}
                   onDeleteReply={(replyId) => deleteReply(comment.id ?? '', replyId)}

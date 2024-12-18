@@ -183,7 +183,7 @@ const useCommentManagerViewModel = () => {
 
       const tempReply = {
         id: `temp-reply-${Date.now()}`,
-        parentId, // Gán parentId để xác định cha của reply này
+        parentId,
         snippet: {
           textOriginal: replyText,
           authorDisplayName: gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getName() || 'You',
@@ -194,7 +194,7 @@ const useCommentManagerViewModel = () => {
 
       const updatedComments = comments.map((comment) => {
         if (comment.id === parentId) {
-          // Trả lời comment cấp cao nhất
+          // Trả lời top-level comment
           return {
             ...comment,
             replies: {
@@ -204,11 +204,10 @@ const useCommentManagerViewModel = () => {
         }
 
         if (comment.replies?.comments) {
-          // Trả lời nested reply
           return {
             ...comment,
             replies: {
-              comments: comment.replies.comments.map((reply) => {
+              comments: comment.replies.comments.map((reply: any) => {
                 if (reply.id === parentId) {
                   return {
                     ...reply,
@@ -239,6 +238,8 @@ const useCommentManagerViewModel = () => {
           }
         })
 
+        console.log(response)
+
         console.log('Reply added successfully!')
       } catch (error) {
         console.error('Error posting reply:', error)
@@ -249,7 +250,7 @@ const useCommentManagerViewModel = () => {
             return {
               ...comment,
               replies: {
-                comments: comment.replies?.comments.filter((reply) => reply.id !== tempReply.id) || []
+                comments: comment.replies?.comments?.filter((reply) => reply.id !== tempReply.id) || []
               }
             }
           }
@@ -275,7 +276,7 @@ const useCommentManagerViewModel = () => {
           return {
             ...comment,
             replies: {
-              comments: comment.replies?.comments.filter((reply) => reply.id !== replyId) || []
+              comments: comment.replies?.comments?.filter((reply) => reply.id !== replyId) || []
             }
           }
         }
